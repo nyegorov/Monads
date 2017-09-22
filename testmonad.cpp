@@ -1,6 +1,3 @@
-// test_sutter.cpp : Defines the entry point for the console application.
-//
-
 #include "stdafx.h"
 #include <iostream>
 #include <algorithm>
@@ -15,6 +12,8 @@
 #include <utility>
 
 using namespace std;
+
+// building blocks
 
 template <typename K, typename V> ostream& operator<<(ostream& os, const map<K, V>& m) {
 	os << "{";
@@ -46,27 +45,16 @@ auto to_pair = [](auto&& l) {
 							pair<A, A>{ {}, {} };
 };
 
-auto inserter = [](auto&& m, auto&& e) { m.insert(e); };
+auto insert = [](auto&& m, auto&& e) { m.insert(e); };
 
 // some ingredients
 
-template <class X, class B> struct rebase { typedef B type; };
+template <typename A, typename B> struct rebase { typedef B type; };
 template <class A, class B> struct rebase<std::list<A>, B> { typedef std::list<B> type; };
 template <class A, class B> struct rebase<std::vector<A>, B> { typedef std::vector<B> type; };
 
-template <typename K, typename ...> struct replace_type { using type = K; };
-template <typename T, typename U> struct replace_type<T, T, U> { using type = U; };
-template <template <typename... Ks> class K, typename T, typename U, typename... Ks> struct replace_type<K<Ks...>, T, U> { using type = K<typename replace_type<Ks, T, U>::type ...>; };
-
-/*template<class X, class F> auto fmap(X x, F&& f) { return f(x); };
-template<class A, class F> auto fmap(optional<A>& o, F&& f) {
-	return o ? optional<result_of_t<F(A)>>{f(o.value())} : optional<result_of_t<F(A)>>{};
-};
-template <class A, class F> auto fmap(list<A>& o, F&& f) {
-	list<result_of_t<F(A)>> lb;
-	for(auto&& a : la)	lb.push_back(f(a));
-	return lb;
-};*/
+//template <class C, class B> struct rebase1;// { typedef B type; };
+//template <template<class...> class C, class A, class B> struct rebase1<C<A>, B> { typedef C<B> type; };
 
 template <class X> struct fmap {
 	template<class F> auto operator() (X& x, F&& f) { return f(forward<X>(x)); };
@@ -102,11 +90,10 @@ template<class A, class F> auto operator | (A&& a, pair<F, int>&& p)
 template<class F> auto apply(F&& f)
 {
 	return make_pair([f](auto&& la) {
-		using LA = remove_reference<decltype(la)>::type;
+		using LA = remove_reference_t<decltype(la)>;
 		using A = LA::value_type;
-		using B = result_of<F(A)>::type;
+		using B = result_of_t<F(A)>;
 		using LB = rebase<LA, B>::type;
-		//using LB = replace_type<LA, A, B>::type;
 
 		LB lb;
 		std::transform(begin(la), end(la), std::inserter(lb, begin(lb)), f);
@@ -141,7 +128,7 @@ int main()
 		| split('=')
 		| apply(to_pair)
 		| filter([](auto&& p) {return !p.first.empty(); })
-		| reduce(::inserter, m)
+		| reduce(insert, m)
 		;
 
 	auto l = "3,4,x6,5"
@@ -150,10 +137,6 @@ int main()
 		| [](auto n) { return n*n; }
 		| [](auto n) { return to_string(n); }
 		;
-
-		vector<int> v = { 1,2,3 };
-		vector<int> v2;
-		transform(begin(v), end(v), std::inserter(v2, v2.end()), [](int n) {return n*n; });
 
 	return 0;
 }
