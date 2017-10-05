@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include <chrono>
 #include <iostream>
 #include <algorithm>
 #include <numeric>
@@ -12,6 +13,16 @@
 #include <utility>
 
 using namespace std;
+
+template <class T>
+class mylist : public list<T> {
+public:
+	mylist() : list() { cout << "list()" << endl; };
+	mylist(const mylist& other) : list(other) { cout << "list(const&)" << endl; };
+	mylist(mylist&& other) : list(other) { cout << "list(&&)" << endl; };
+	~mylist()	{ cout << "~list" << endl; }
+};
+
 
 // building blocks
 
@@ -37,14 +48,7 @@ auto split(string_view src, char separator = ' ')
 }
 
 auto split(char c) { return [c](string_view s) {return split(s, c); }; }
-
-auto to_pair = [](auto&& l) {
-	using A = remove_reference<decltype(l)>::type::value_type;
-	return	l.size() == 2 ? pair<A, A>{ *l.begin(), *++l.begin() } :
-			l.size() == 1 ? pair<A, A>{ *l.begin(), {} } :
-							pair<A, A>{ {}, {} };
-};
-
+auto to_pair = [](auto&& l) { return make_pair( l.front(), l.back() ); };
 auto insert = [](auto&& m, auto&& e) { m.insert(e); };
 
 // some ingredients
@@ -75,6 +79,24 @@ template <class A> struct fmap<list<A>> {
 	};
 };
 
+template <class A> struct fmap<vector<A>> {
+	template<class F> auto operator() (vector<A>& la, F&& f) {
+		vector<decltype(declval<A>() | f)> lb;
+		for(auto&& a : la)	lb.push_back(a | f);
+
+		return lb;
+	};
+};
+
+template <class A> struct fmap<mylist<A>> {
+	template<class F> auto operator() (mylist<A>& la, F&& f) {
+		list<decltype(declval<A>() | f)> lb;
+		for(auto&& a : la)	lb.push_back(a | f);
+
+		return lb;
+	};
+};
+
 // magic starts here...
 
 template<class A, class F> auto operator | (A&& a, F&& f)
@@ -87,7 +109,7 @@ template<class A, class F> auto operator | (A&& a, pair<F, int>&& p)
 	return p.first(forward<A>(a));
 };
 
-template<class F> auto apply(F&& f)
+template<class F> auto transform(F&& f)
 {
 	return make_pair([f](auto&& la) {
 		using LA = remove_reference_t<decltype(la)>;
@@ -120,17 +142,25 @@ template<class F, class S> auto reduce(F&& f, S&& s)
 
 int main()
 {
+	int x = 3, y = 5;
+	auto z = x | y;
+
+	auto t1 = std::chrono::high_resolution_clock::now();
 	string s = "a=3\nb=xyz\nnoval\n\n";
 	map<string, string> m;
-
-	auto r = s	
+	auto r = s
 		| split('\n')
 		| split('=')
-		| apply(to_pair)
-		| filter([](auto&& p) {return !p.first.empty(); })
+		| filter([](auto&& p) {return p.size() == 2; })
+		| transform(to_pair)
 		| reduce(insert, m)
 		;
+	auto t2 = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double, std::milli> ms = t2 - t1;
+	std::cout << "" << m.size() << " took " << ms.count() << " ms\n";
 
+
+	cout << "---" << endl;
 	auto l = "3,4,x6,5"
 		| split(',')
 		| [](auto s) { try { return optional<int>(stoi(s.data())); } catch(...) {} return optional<int>{}; }
