@@ -83,48 +83,47 @@ template <class A> struct join<std::experimental::generator<std::experimental::g
 
 // magic starts here...
 
-template<class A, class F> auto operator | (const A& a, F&& f)
+/*template<class A, class F> auto operator | (const A& a, F&& f)
 {
-	auto&& mmb = fmap<std::remove_reference_t<A>>()(a, forward<F>(f));
-	return join<std::remove_reference_t<decltype(mmb)>>()(std::forward<std::remove_reference_t<decltype(mmb)>>(mmb));
-};
+	using MMB = decltype(fmap<std::remove_reference_t<A>>()(a, forward<F>(f)));
+	return join<MMB>()(fmap<std::remove_reference_t<A>>()(a, forward<F>(f)));
+};*/
 
 template<class A, class F> auto operator | (A&& a, F&& f)
 {
-	//return fmap<remove_reference_t<A>>()(forward<A>(a), forward<F>(f));
-	auto mmb = fmap<std::remove_reference_t<A>>()(forward<A>(a), forward<F>(f));
-	return join<std::remove_reference_t<decltype(mmb)>>()(std::forward<decltype(mmb)>(mmb));
+	using MMB = decltype(fmap<std::remove_reference_t<A>>()(forward<A>(a), forward<F>(f)));
+	return join<MMB>()(fmap<std::remove_reference_t<A>>()(forward<A>(a), forward<F>(f)));
 };
 
-template<class A, class F> auto operator | (const A& a, std::pair<F, int>&& p)	{ return p.first(a); };
+//template<class A, class F> auto operator | (const A& a, std::pair<F, int>&& p)	{ return p.first(a); };
 template<class A, class F> auto operator | (A&& a, std::pair<F, int>&& p)		{ return p.first(forward<A>(a)); };
 
 template<class F> auto transform(F&& f)
 {
-	return std::make_pair([f](const auto&& la) {
-		using LA = std::remove_const_t<std::remove_reference_t<decltype(la)>>;
+	return std::make_pair([f](auto&& la) {
+		using LA = std::remove_reference_t<decltype(la)>;
 		using A = LA::value_type;
 		using B = std::result_of_t<F(A)>;
 		using LB = rebase<LA, B>::type;
 
 		LB lb;
-		std::transform(begin(la), end(la), std::inserter(lb, begin(lb)), f);
+		for(auto&& l : la)	lb.push_back(f(l));
 		return lb;
 	}, 1);
 }
 
 template<class F> auto filter(F&& f)
 {
-	return make_pair([f](const auto&& la) {
-		std::remove_const_t<std::remove_reference_t<decltype(la)>> res;
-		std::copy_if(begin(la), end(la), std::inserter(res, end(res)), f);
+	return make_pair([f](auto&& la) {
+		std::remove_reference_t<decltype(la)> res;
+		for(auto&& l : la)	if(f(l)) res.push_back(std::move(l));
 		return res;
 	}, 1);
 }
 
 template<class F, class S> auto reduce(F&& f, S&& s)
 {
-	return make_pair([f, &s](const auto&& l) {
+	return make_pair([f, &s](auto&& l) {
 		for(auto&& i : l)	f(s, i);
 		return s;
 	}, 1);
