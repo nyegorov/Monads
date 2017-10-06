@@ -15,7 +15,7 @@ template <class X> struct fmap {
 
 template <class X> struct join {
 	auto operator() (const X& x)  { return x; };
-	auto operator() (const X&& x) { return std::move(x); };
+	auto operator() (X&& x)		  { return std::move(x); };
 };
 
 // optional
@@ -26,7 +26,7 @@ template <class A> struct fmap<std::optional<A>> {
 };
 
 template <class A> struct join<std::optional<std::optional<A>>> {
-	auto operator() (const std::optional<std::optional<A>>& o) {
+	auto operator() (std::optional<std::optional<A>>&& o) {
 		return o ? o.value() : std::optional<std::optional<A>::value_type>{};
 	};
 };
@@ -50,7 +50,10 @@ template <class A> struct join<std::list<std::list<A>>> {
 
 // generator
 template <class A> struct fmap<std::experimental::generator<A>> {
-	template<class F/*, typename = enable_if_t<is_same_v<result_of_t<F(A)>, generator<A>>>*/> auto operator() (const std::experimental::generator<A>& ga, F&& f) {
+	//template<class F/*, typename = enable_if_t<is_same_v<result_of_t<F(A)>, generator<A>>>*/> auto operator() (const std::experimental::generator<A>& ga, F&& f) {
+		//for(auto&& a : ga)	co_yield a | f;
+	//};
+	template<class F> auto operator() (std::experimental::generator<A>&& ga, F&& f) {
 		for(auto&& a : ga)	co_yield a | f;
 	};
 	/*	template<class F, typename = enable_if_t<!is_same_v<result_of_t<F(A)>, generator<A>>>> auto operator() (generator<A>& la, F&& f) {
@@ -62,7 +65,7 @@ template <class A> struct fmap<std::experimental::generator<A>> {
 };
 
 template <class A> struct join<std::experimental::generator<std::experimental::generator<A>>> {
-	auto operator() (std::experimental::generator<std::experimental::generator<A>>& gga) {
+	auto operator() (std::experimental::generator<std::experimental::generator<A>>&& gga) {
 		for(auto& ga : gga)
 			for(auto& a : ga)	co_yield a;
 	};
@@ -89,7 +92,7 @@ template<class A, class F> auto operator | (const A& a, F&& f)
 template<class A, class F> auto operator | (A&& a, F&& f)
 {
 	//return fmap<remove_reference_t<A>>()(forward<A>(a), forward<F>(f));
-	auto&& mmb = fmap<std::remove_reference_t<A>>()(forward<A>(a), forward<F>(f));
+	auto mmb = fmap<std::remove_reference_t<A>>()(forward<A>(a), forward<F>(f));
 	return join<std::remove_reference_t<decltype(mmb)>>()(std::forward<decltype(mmb)>(mmb));
 };
 

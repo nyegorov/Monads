@@ -92,20 +92,13 @@ int main()
 			cout << j;
 	}*/
 
-	/*string s = "a=3\nb=xyz\nnoval\n\n";
+/*	string s = "a=3\nb=xyz\nnoval\n\n";
 	auto r = s 
 		| split_async('\n')
-		| split_async('=');
-
-	for(auto&& i : r) {
-		//for(auto&& j : i)	{
-			//cout << j << endl; 
-		//}
-		//cout << i;
-	}*/
+		| split_async('=');*/
 
 /*	auto t1 = std::chrono::high_resolution_clock::now();
-	auto s = "a=3\nb=xyz\nnoval\n\n"sv;
+	auto s = "a=3\nb=xyz\nnoval\n\n"s;
 	map<string, string> m;
 	auto r = s
 		| split('\n')
@@ -117,7 +110,7 @@ int main()
 	auto t2 = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double, std::milli> ms = t2 - t1;
 	std::cout << "" << m.size() << " took " << ms.count() << " ms\n";
-	
+	*/
 
 	cout << "---" << endl;
 	auto l = "3,4,x6,5"
@@ -126,7 +119,7 @@ int main()
 		| [](auto n) { return n*n; }
 		| [](auto n) { return to_string(n); }
 		;
-		*/
+
 	return 0;
 }
 
