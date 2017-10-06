@@ -13,3 +13,17 @@
 
 
 // TODO: reference additional headers your program requires here
+#include <chrono>
+#include <iostream>
+#include <algorithm>
+#include <numeric>
+#include <iterator>
+#include <list>
+#include <map>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
+#include <utility>
+#include <type_traits>
+#include <experimental\generator>
