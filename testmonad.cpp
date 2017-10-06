@@ -104,8 +104,8 @@ int main()
 		//cout << i;
 	}*/
 
-	auto t1 = std::chrono::high_resolution_clock::now();
-	string s = "a=3\nb=xyz\nnoval\n\n";
+/*	auto t1 = std::chrono::high_resolution_clock::now();
+	auto s = "a=3\nb=xyz\nnoval\n\n"sv;
 	map<string, string> m;
 	auto r = s
 		| split('\n')
@@ -126,7 +126,7 @@ int main()
 		| [](auto n) { return n*n; }
 		| [](auto n) { return to_string(n); }
 		;
-
+		*/
 	return 0;
 }
 
