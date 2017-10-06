@@ -13,7 +13,7 @@ public:
 	~mylist()	{ cout << "~list" << endl; }
 };
 
-template <class A, class B> struct rebase<mylist<A>, B> { typedef mylist<B> type; };
+template <class A, class B> struct rebind<mylist<A>, B> { typedef mylist<B> type; };
 
 template <class A> struct fmap<mylist<A>> {
 	template<class F> auto operator() (mylist<A>& la, F&& f) {
@@ -80,7 +80,9 @@ int main()
 	//int x = 3, y = 5;
 	//auto z = x | y;
 
-	auto x = 3 
+	auto s = "a=3\nb=xyz\nnoval\n\n"s;
+
+	auto x = 3
 		| [](auto n) {return optional<int>{n}; }
 		| [](auto n) {return n*n; }
 	;
@@ -92,13 +94,14 @@ int main()
 			cout << j;
 	}*/
 
-	/*string s = "a=3\nb=xyz\nnoval\n\n";
-	auto r = s 
+	auto ra = s
 		| split_async('\n')
-		| split_async('=');*/
+		//| split_async('=')
+	;
+	for(auto r : ra)
+		cout << r << endl;
 
 	auto t1 = std::chrono::high_resolution_clock::now();
-	auto s = "a=3\nb=xyz\nnoval\n\n"s;
 	map<string, string> m;
 	auto r = s
 		| split('\n')

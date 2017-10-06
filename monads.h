@@ -1,21 +1,19 @@
 #pragma once
 
-template <typename A, typename B> struct rebase { typedef B type; };
-template <class A, class B> struct rebase<std::list<A>, B> { typedef std::list<B> type; };
-template <class A, class B> struct rebase<std::vector<A>, B> { typedef std::vector<B> type; };
+template <typename A, typename B> struct rebind { typedef B type; };
+template <class A, class B> struct rebind<std::list<A>, B> { typedef std::list<B> type; };
+template <class A, class B> struct rebind<std::vector<A>, B> { typedef std::vector<B> type; };
 
 //template <class C, class B> struct rebase1;// { typedef B type; };
 //template <template<class...> class C, class A, class B> struct rebase1<C<A>, B> { typedef C<B> type; };
 
 // generic
 template <class X> struct fmap {
-	template<class F> auto operator() (const X& x, F&& f)	{ return f(x); };
-	template<class F> auto operator() (X&& x, F&& f)		{ return f(std::forward<X>(x)); };
+	template<class T, class F> auto operator() (T&& x, F&& f)		{ return f(std::forward<T>(x)); };
 };
 
 template <class X> struct join {
-	auto operator() (const X& x)  { return x; };
-	auto operator() (X&& x)		  { return std::move(x); };
+	template<class A> auto operator() (A&& a) { return std::forward<A>(a); };
 };
 
 // optional
@@ -54,7 +52,10 @@ template <class A> struct fmap<std::experimental::generator<A>> {
 		//for(auto&& a : ga)	co_yield a | f;
 	//};
 	template<class F> auto operator() (std::experimental::generator<A>&& ga, F&& f) {
-		for(auto&& a : ga)	co_yield a | f;
+		for(auto&& a : ga) {
+			A val = a;
+			co_yield std::move(std::forward<A>(val) | f);
+		}
 	};
 	/*	template<class F, typename = enable_if_t<!is_same_v<result_of_t<F(A)>, generator<A>>>> auto operator() (generator<A>& la, F&& f) {
 	for(auto&& a : la)	co_yield(a | f);
@@ -71,15 +72,6 @@ template <class A> struct join<std::experimental::generator<std::experimental::g
 	};
 };
 
-// vector
-/*template <class A> struct fmap<vector<A>> {
-	template<class F> auto operator() (vector<A>& la, F&& f) {
-		vector<decltype(declval<A>() | f)> lb;
-		for(auto&& a : la)	lb.push_back(f(a));
-
-		return lb;
-	};
-};*/
 
 // magic starts here...
 
@@ -102,9 +94,9 @@ template<class F> auto transform(F&& f)
 {
 	return std::make_pair([f](auto&& la) {
 		using LA = std::remove_reference_t<decltype(la)>;
-		using A = LA::value_type;
+		using A = LA::iterator::value_type;
 		using B = std::result_of_t<F(A)>;
-		using LB = rebase<LA, B>::type;
+		using LB = rebind<LA, B>::type;
 
 		LB lb;
 		for(auto&& l : la)	lb.push_back(f(l));
