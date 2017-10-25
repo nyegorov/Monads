@@ -15,7 +15,7 @@ public:
 
 template <class A, class B> struct rebind<mylist<A>, B> { typedef mylist<B> type; };
 
-template <class A> struct fmap<mylist<A>> {
+/*template <class A> struct fmap<mylist<A>> {
 	template<class F> auto operator() (mylist<A>& la, F&& f) {
 		list<decltype(declval<A>() | f)> lb;
 		for(auto&& a : la)	lb.push_back(a | f);
@@ -29,7 +29,7 @@ template <class A> struct join<mylist<mylist<A>>> {
 		for(auto&& a : la)	l.splice(l.end(), a);
 		return l;
 	};
-};
+};*/
 
 
 
@@ -70,6 +70,9 @@ auto split(char c) { return [c](string_view s) {return split(s, c); }; }
 auto split_async(char c) { return [c](string_view s) {return split_async(s, c); }; }
 auto to_pair = [](auto&& l) { return make_pair( l.front(), l.back() ); };
 auto insert = [](auto&& m, auto&& e) { m.insert(e); };
+//auto to_list = []() { list<decltype(a)> l; return reduce(insert, a); };
+//template<class T> to_list() { list<T> l; reduce(insert, l) )
+auto print = [](auto&& x) { cout << string(x) << endl; };
 template<class T> optional<T> parse(string_view s);
 template<> optional<int> parse<int>(string_view s)	{ try { return optional<int>(stoi(s.data())); } catch(...) {} return optional<int>{}; };
 
@@ -87,41 +90,54 @@ int main()
 		| [](auto n) {return n*n; }
 	;
 
+	map<string, string> m;
+
 /*	auto g = split_async('\n')("a=3\nb=xyz\nnoval\n\n");
 	for(auto&& i : g) {
 		auto gg = split_async('=')(i);
 		for(auto&& j : gg)
 			cout << j;
 	}*/
-
-	auto ra = s
-		| split_async('\n')
-		//| split_async('=')
-	;
-	for(auto r : ra)
-		cout << r << endl;
+/*	auto raa = s | split_async('\n') | split_async('=');
+	for(auto&& ra : raa)
+		for(auto r : ra)
+			cout << ra << endl;*/
 
 	auto t1 = std::chrono::high_resolution_clock::now();
-	map<string, string> m;
+	auto ra = s
+		| split_async('\n')
+		| [](auto&& sv) { return sv | split_async('=') | reduce([](auto&& psv, auto&& sv) { if(psv.first.empty()) psv.first = sv; else psv.second = sv; }, pair<string_view, string_view>()); }
+		| filter_async([](auto&& psv) {return !psv.second.empty(); })
+		| reduce(insert, m)
+	;
+	auto t2 = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double, std::milli> ms = t2 - t1;
+	std::cout << "" << m.size() << " took " << ms.count() << " ms\n";
+
+	for(auto r : ra)
+		cout << r.first << "," << r.second << endl;
+
+	auto t3 = std::chrono::high_resolution_clock::now();
+	map<string, string> mm;
 	auto r = s
 		| split('\n')
 		| transform(split('='))
 		| filter([](auto&& p) {return p.size() == 2; })
 		| transform(to_pair)
-		| reduce(insert, m)
+		| reduce(insert, mm)
 		;
-	auto t2 = std::chrono::high_resolution_clock::now();
-	std::chrono::duration<double, std::milli> ms = t2 - t1;
-	std::cout << "" << m.size() << " took " << ms.count() << " ms\n";
+	auto t4 = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double, std::milli> ms2 = t4 - t3;
+	std::cout << "" << m.size() << " took " << ms2.count() << " ms\n";
 	
 
-	cout << "---" << endl;
+	/*cout << "---" << endl;
 	auto l = "3,4,x6,5"
 		| split(',')
 		| parse<int>
 		| [](auto n) { return n*n; }
 		| [](auto n) { return to_string(n); }
-		;
+		;*/
 
 	return 0;
 }
