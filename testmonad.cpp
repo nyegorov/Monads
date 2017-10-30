@@ -99,15 +99,15 @@ int main()
 			cout << j;
 	}*/
 /*	auto raa = s | split_async('\n') | split_async('=');
-	for(auto&& ra : raa)
-		for(auto r : ra)
-			cout << ra << endl;*/
+	for(auto it = raa.begin(); it != raa.end(); ++it)
+		for(auto iit = it->begin(); iit != it->end(); ++iit);
+			//cout << string(r) << endl;*/
 
 	auto t1 = std::chrono::high_resolution_clock::now();
 	auto ra = s
 		| split_async('\n')
 		| [](auto&& sv) { return sv | split_async('=') | reduce([](auto&& psv, auto&& sv) { if(psv.first.empty()) psv.first = sv; else psv.second = sv; }, pair<string_view, string_view>()); }
-		| filter_async([](auto&& psv) {return !psv.second.empty(); })
+		| filter([](auto&& psv) {return !psv.second.empty(); })
 		| reduce(insert, m)
 	;
 	auto t2 = std::chrono::high_resolution_clock::now();
@@ -131,14 +131,15 @@ int main()
 	std::cout << "" << m.size() << " took " << ms2.count() << " ms\n";
 	
 
-	/*cout << "---" << endl;
+	cout << "---" << endl;
 	auto l = "3,4,x6,5"
 		| split(',')
 		| parse<int>
 		| [](auto n) { return n*n; }
 		| [](auto n) { return to_string(n); }
-		;*/
+		;
 
-	return 0;
+
+		return 0;
 }
 
