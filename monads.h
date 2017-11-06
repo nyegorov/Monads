@@ -4,9 +4,6 @@ template <typename A, typename B> struct rebind { typedef B type; };
 template <class A, class B> struct rebind<std::list<A>, B> { typedef std::list<B> type; };
 template <class A, class B> struct rebind<std::vector<A>, B> { typedef std::vector<B> type; };
 
-template <typename A> struct unwrap					{ typedef A type; };
-template <class A> struct unwrap<std::list<A>>		{ typedef A type; };
-
 //template <class C, class B> struct rebase1;// { typedef B type; };
 //template <template<class...> class C, class A, class B> struct rebase1<C<A>, B> { typedef C<B> type; };
 
@@ -41,13 +38,13 @@ template <class A> struct fmap<std::list<A>> {
 	};
 };
 
-template <class A> struct join<std::list<std::list<A>>> {
+/*template <class A> struct join<std::list<std::list<A>>> {
 	auto operator() (std::list<std::list<A>>&& la) {
 		std::list<A> l;
 		for(auto&& a : la)	l.splice(l.end(), a);
 		return l;
 	};
-};
+};*/
 
 // generator
 template <class A> struct fmap<std::experimental::generator<A>> {
@@ -79,27 +76,13 @@ template<typename F> struct filter_t
 	}
 	const F _f;
 };
-
-template<class MA, class F> auto operator | (MA&& ma, F&& f)
-{
-	return join<decltype(fmap<std::remove_reference_t<MA>>()(ma, f))>()(fmap<std::remove_reference_t<MA>>()(forward<MA>(ma), forward<F>(f)));
-}
-
-template<class MA, class F> auto operator | (MA&& ma, std::pair<F, int>&& p) { return p.first(std::forward<MA>(ma)); };
-template<class MA, class F> auto operator | (MA&& ma, filter_t<F>&& flt) { return flt(std::forward<MA>(ma)); };
-
 template<typename F> auto filter(F&& f) { return filter_t<F>(std::forward<F>(f)); }
 
 template<class F> auto transform(F&& f)
 {
 	return std::make_pair([f](auto&& la) {
-		using LA = std::remove_reference_t<decltype(la)>;
-		using A = LA::iterator::value_type;
-		using B = std::result_of_t<F(A)>;
-		using BU = unwrap<B>::type;
-		using LB = rebind<LA, B>::type;
-		LB lb;
-		for(auto&& l : la)	lb.push_back(f(l));
+		rebind<std::remove_reference_t<decltype(la)>, decltype(f(*la.begin()))>::type lb;
+		std::transform(begin(la), end(la), std::back_inserter(lb), f);
 		return lb;
 	}, 1);
 }
@@ -111,3 +94,12 @@ template<class F, class S> auto reduce(F&& f, S&& s)
 		return s;
 	}, 1);
 }
+
+template<class MA, class F> auto operator | (MA&& ma, F&& f)
+{
+	return join<decltype(fmap<std::remove_reference_t<MA>>()(ma, f))>()(fmap<std::remove_reference_t<MA>>()(std::forward<MA>(ma), std::forward<F>(f)));
+}
+
+template<class MA, class F> auto operator | (MA&& ma, std::pair<F, int>&& p) { return p.first(std::forward<MA>(ma)); };
+template<class MA, class F> auto operator | (MA&& ma, filter_t<F>&& flt) { return flt(std::forward<MA>(ma)); };
+

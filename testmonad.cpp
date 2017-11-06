@@ -121,7 +121,7 @@ int main()
 	map<string, string> mm;
 	auto r = s
 		| split('\n')
-		| transform(split('='))
+		| split('=')
 		| filter([](auto&& p) {return p.size() == 2; })
 		| transform(to_pair)
 		| reduce(insert, mm)
