@@ -80,12 +80,12 @@ template<> optional<int> parse<int>(string_view s)	{ try { return optional<int>(
 
 int main()
 {
-	//int x = 3, y = 5;
-	//auto z = x | y;
+	int x = 3, y = 5;
+	auto z = x | ~y;
 
 	auto s = "a=3\nb=xyz\nnoval\n\n"s;
 
-	auto x = 3
+	auto xx = 3
 		| [](auto n) {return optional<int>{n}; }
 		| [](auto n) {return n*n; }
 	;
@@ -106,9 +106,9 @@ int main()
 	auto t1 = std::chrono::high_resolution_clock::now();
 	auto ra = s
 		| split_async('\n')
-		| [](auto&& sv) { return sv | split_async('=') | reduce([](auto&& psv, auto&& sv) { if(psv.first.empty()) psv.first = sv; else psv.second = sv; }, pair<string_view, string_view>()); }
-		| filter([](auto&& psv) {return !psv.second.empty(); })
-		| reduce(insert, m)
+		| [](auto&& sv) { return sv | split_async('=') | ~reduce([](auto&& psv, auto&& sv) { if(psv.first.empty()) psv.first = sv; else psv.second = sv; }, pair<string_view, string_view>()); }
+		| ~filter([](auto&& psv) {return !psv.second.empty(); })
+		| ~reduce(insert, m)
 	;
 	auto t2 = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double, std::milli> ms = t2 - t1;
@@ -122,9 +122,9 @@ int main()
 	auto r = s
 		| split('\n')
 		| split('=')
-		| filter([](auto&& p) {return p.size() == 2; })
-		| transform(to_pair)
-		| reduce(insert, mm)
+		| ~filter([](auto&& p) {return p.size() == 2; })
+		| ~transform(to_pair)
+		| ~reduce(insert, mm)
 		;
 	auto t4 = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double, std::milli> ms2 = t4 - t3;
