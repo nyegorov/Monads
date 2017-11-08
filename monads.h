@@ -1,5 +1,7 @@
 #pragma once
 
+namespace monads {
+
 template <typename A, typename B> struct rebind { typedef B type; };
 template <class A, class B> struct rebind<std::list<A>, B> { typedef std::list<B> type; };
 template <class A, class B> struct rebind<std::vector<A>, B> { typedef std::vector<B> type; };
@@ -9,7 +11,7 @@ template <class A, class B> struct rebind<std::vector<A>, B> { typedef std::vect
 
 // generic
 template <class X> struct fmap {
-	template<class T, class F> auto operator() (T&& x, F f)		{ return f(std::forward<T>(x)); };
+	template<class T, class F> auto operator() (T&& x, F f) { return f(std::forward<T>(x)); };
 };
 
 template <class X> struct join {
@@ -64,12 +66,12 @@ template <class A> struct fmap<std::experimental::generator<A>> {
 
 // magic starts here...
 
-template<typename F> struct fwrap{ F f; };
+template<typename F> struct fwrap { F f; };
 
 template<typename F> struct filter_t
 {
 	filter_t(F f) : _f(f) { }
-	template<typename MA> auto operator()(MA&& ma) const { 
+	template<typename MA> auto operator()(MA&& ma) const {
 		MA res;
 		for(auto&& a : ma)	if(_f(a)) res.push_back(a);
 		return res;
@@ -104,3 +106,5 @@ template<class MA, typename F> auto operator | (MA&& ma, F f)
 }
 template<class MA, typename F> auto operator | (MA&& ma, fwrap<F>&& f) { return f.f(std::forward<MA>(ma)); };
 template<class F> auto operator ~ (F f) { return fwrap<F> {f}; };
+
+}

@@ -5,6 +5,7 @@
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace std;
 using namespace std::experimental;
+using namespace monads;
 
 auto split(string_view src, char separator = ' ')
 {
@@ -29,11 +30,11 @@ generator<string_view> split_gen(string_view src, char separator = ' ')
 }
 
 auto even(int n) { return n % 2 == 0; }
-auto square = [](int x) { return x*x; };
+auto square = [](auto x) { return x*x; };
 using just = optional<int>;
 auto nothing = just();
 auto ints() { int n = 0; while(true) co_yield ++n; }
-auto take(int n) { return [n](auto g) { int cnt = n; for(auto i : g) if(cnt--) co_yield i; else break; }; }
+auto take(unsigned n) { return [n](auto g) { auto cnt = n; for(auto&& i : g) if(cnt--) co_yield i; else break; }; }
 auto sum() { return [](auto&& g) { return accumulate(begin(g), end(g), 0, plus<int>()); }; }
 auto insert = [](auto&& m, auto&& e) { m.insert(e); };
 
@@ -42,25 +43,23 @@ auto split_gen(char c) { return [c](string_view s) {return split_gen(s, c); }; }
 template<class T> optional<T> parse(string_view s);
 template<> optional<int> parse<int>(string_view s) { try { return optional<int>(stoi(s.data())); } catch(...) {} return optional<int>{}; };
 
-static int def_ctors = 0;
+static int bank_ctors = 0;
 static int copy_ctors = 0;
 static int move_ctors = 0;
-static int dtors = 0;
+static int bank_dtors = 0;
 
 template <class T> class bank_account {
-protected:
 	T val;
 public:
-	friend fmap<bank_account<T>>;
-	bank_account(T val) : val(val) { def_ctors++; }
+	bank_account(T val) : val(val) { bank_ctors++; }
 	bank_account(const bank_account& other) { copy_ctors++; val = other.val; }
 	bank_account(bank_account&& other) { move_ctors++; val = other.val; other.val = 0; }
+	~bank_account() { bank_dtors++; }
 	T amount() const { return val; }
-	~bank_account() { dtors++; }
 };
 template <class A, class B> struct rebind<bank_account<A>, B> { typedef bank_account<B> type; };
-template <class A> struct fmap<bank_account<A>> { template<class F> auto operator() (bank_account<A>& ma, F f) { return bank_account<decltype(declval<A>() | f)>(ma.val | f); }; };
-template <class A> struct join<bank_account<bank_account<A>>> { auto operator() (bank_account<bank_account<A>>&& mma) { return mma.val; }; };
+template <class A> struct fmap<bank_account<A>> { template<class F> auto operator() (bank_account<A>& ma, F f) { return bank_account<decltype(declval<A>() | f)>(ma.amount() | f); }; };
+template <class A> struct join<bank_account<bank_account<A>>> { auto operator() (bank_account<bank_account<A>>&& mma) { return mma.amount(); }; };
 
 namespace Microsoft::VisualStudio::CppUnitTestFramework {
 template<> inline std::wstring ToString<just>(const just& v) { return v ? to_wstring(v.value()) : L"nothing"; }
@@ -113,7 +112,7 @@ namespace tests
 			auto deposit  = [](auto dx) { return [dx](auto x) {return x + dx; }; };
 			auto withdraw = [](auto dx) { return [dx](auto x) {return x - dx; }; };
 			auto check	  = [](auto x)  { return x < 0 ? nothing : just(x); };
-			auto amount   = [](auto b)  { return b.amount(); };
+			auto amount   = [](auto&& b){ return b.amount(); };
 			Assert::AreEqual(just(49), Bank(5)
 				| deposit(4)
 				| withdraw(5)
@@ -129,9 +128,9 @@ namespace tests
 				| ~amount
 			);
 			Assert::AreEqual(0, copy_ctors);
-			Assert::AreEqual(10, move_ctors);
-			Assert::AreEqual(10, def_ctors);
-			Assert::AreEqual(20, dtors);
+			Assert::AreEqual(8, move_ctors);
+			Assert::AreEqual(10, bank_ctors);
+			Assert::AreEqual(18, bank_dtors);
 		}
 
 		TEST_METHOD(Performance)

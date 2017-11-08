@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "monads.h"
 
+using namespace monads;
 using namespace std;
 using namespace std::experimental;
 
