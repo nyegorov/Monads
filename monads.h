@@ -19,7 +19,8 @@ template <class X> struct join {
 // optional
 template <class A> struct fmap<std::optional<A>> {
 	template<class F> auto operator() (const std::optional<A>& o, F f) {
-		return o ? std::optional<std::result_of_t<F(A)>>{f(o.value())} : std::optional<std::result_of_t<F(A)>>{};
+		//return o ? std::optional<std::result_of_t<F(A)>>{f(o.value())} : std::optional<std::result_of_t<F(A)>>{};
+		return o ? std::optional<decltype(declval<A>() | f)>{o.value() | f} : std::optional<decltype(declval<A>() | f)>{};
 	};
 };
 
@@ -83,8 +84,8 @@ template<typename F> auto filter(F f) { return filter_t<F>(f); }
 template<class F> auto transform(F f)
 {
 	return [f](auto&& la) {
-		rebind<std::remove_reference_t<decltype(la)>, decltype(f(*std::begin(la)))>::type lb;
-		std::transform(std::begin(la), std::end(la), std::back_inserter(lb), f);
+		rebind<std::decay_t<decltype(la)>, decltype(f(*std::begin(la)))>::type lb;
+		std::transform(std::begin(la), std::end(la), std::inserter(lb, end(lb)), f);
 		return lb;
 	};
 }
@@ -97,9 +98,9 @@ template<class F, class S> auto reduce(F f, S&& s)
 	};
 }
 
-template<class MA, class F> auto operator | (MA&& ma, F f)
+template<class MA, typename F> auto operator | (MA&& ma, F f)
 {
-	return join<decltype(fmap<std::remove_reference_t<MA>>()(ma, f))>()(fmap<std::remove_reference_t<MA>>()(std::forward<MA>(ma), f));
+	return join<decltype(fmap<std::decay_t<MA>>()(ma, f))>()(fmap<std::decay_t<MA>>()(std::forward<MA>(ma), f));
 }
-template<class MA, class F> auto operator | (MA&& ma, fwrap<F>&& f) { return f.f(std::forward<MA>(ma)); };
+template<class MA, typename F> auto operator | (MA&& ma, fwrap<F>&& f) { return f.f(std::forward<MA>(ma)); };
 template<class F> auto operator ~ (F f) { return fwrap<F> {f}; };

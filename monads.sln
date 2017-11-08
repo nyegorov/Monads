@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26730.15
+VisualStudioVersion = 15.0.27004.2006
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test_monad", "test_monad.vcxproj", "{2F833FB2-30B5-4C6A-B1E4-E0198E9B3F68}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "monads", "test_monad.vcxproj", "{2F833FB2-30B5-4C6A-B1E4-E0198E9B3F68}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tests", "tests\tests.vcxproj", "{77B66DA4-9645-41A5-BFAD-616B874578A3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,14 @@ Global
 		{2F833FB2-30B5-4C6A-B1E4-E0198E9B3F68}.Release|x64.Build.0 = Release|x64
 		{2F833FB2-30B5-4C6A-B1E4-E0198E9B3F68}.Release|x86.ActiveCfg = Release|Win32
 		{2F833FB2-30B5-4C6A-B1E4-E0198E9B3F68}.Release|x86.Build.0 = Release|Win32
+		{77B66DA4-9645-41A5-BFAD-616B874578A3}.Debug|x64.ActiveCfg = Debug|x64
+		{77B66DA4-9645-41A5-BFAD-616B874578A3}.Debug|x64.Build.0 = Debug|x64
+		{77B66DA4-9645-41A5-BFAD-616B874578A3}.Debug|x86.ActiveCfg = Debug|Win32
+		{77B66DA4-9645-41A5-BFAD-616B874578A3}.Debug|x86.Build.0 = Debug|Win32
+		{77B66DA4-9645-41A5-BFAD-616B874578A3}.Release|x64.ActiveCfg = Release|x64
+		{77B66DA4-9645-41A5-BFAD-616B874578A3}.Release|x64.Build.0 = Release|x64
+		{77B66DA4-9645-41A5-BFAD-616B874578A3}.Release|x86.ActiveCfg = Release|Win32
+		{77B66DA4-9645-41A5-BFAD-616B874578A3}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
