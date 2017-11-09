@@ -68,6 +68,13 @@ template <class A> struct fmap<std::experimental::generator<A>> {
 
 template<typename F> struct fwrap { F f; };
 
+template<class MA, typename F> auto operator | (MA&& ma, F f)
+{
+	return join<decltype(fmap<std::decay_t<MA>>()(ma, f))>()(fmap<std::decay_t<MA>>()(std::forward<MA>(ma), f));
+}
+template<class MA, typename F> auto operator | (MA&& ma, fwrap<F>&& f) { return f.f(std::forward<MA>(ma)); };
+template<class F> auto operator ~ (F f) { return fwrap<F> {f}; };
+
 template<typename F> struct filter_t
 {
 	filter_t(F f) : _f(f) { }
@@ -81,11 +88,11 @@ template<typename F> struct filter_t
 	}
 	const F _f;
 };
-template<typename F> auto filter(F f) { return filter_t<F>(f); }
+template<typename F> auto filter(F f) { return ~filter_t<F>(f); }
 
 template<class F> auto transform(F f)
 {
-	return [f](auto&& la) {
+	return ~[f](auto&& la) {
 		rebind<std::decay_t<decltype(la)>, decltype(f(*std::begin(la)))>::type lb;
 		std::transform(std::begin(la), std::end(la), std::inserter(lb, end(lb)), f);
 		return lb;
@@ -94,17 +101,7 @@ template<class F> auto transform(F f)
 
 template<class F, class S> auto reduce(F f, S&& s)
 {
-	return [f, &s](auto&& l) {
-		for(auto&& i : l)	f(s, i);
-		return s;
-	};
+	return ~[f, s = std::forward<S>(s)](auto&& l) { return std::accumulate(begin(l), end(l), s, f); };
 }
-
-template<class MA, typename F> auto operator | (MA&& ma, F f)
-{
-	return join<decltype(fmap<std::decay_t<MA>>()(ma, f))>()(fmap<std::decay_t<MA>>()(std::forward<MA>(ma), f));
-}
-template<class MA, typename F> auto operator | (MA&& ma, fwrap<F>&& f) { return f.f(std::forward<MA>(ma)); };
-template<class F> auto operator ~ (F f) { return fwrap<F> {f}; };
 
 }

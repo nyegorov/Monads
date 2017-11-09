@@ -70,7 +70,7 @@ generator<string_view> split_async(string_view src, char separator = ' ')
 auto split(char c) { return [c](string_view s) {return split(s, c); }; }
 auto split_async(char c) { return [c](string_view s) {return split_async(s, c); }; }
 auto to_pair = [](auto&& l) { return make_pair( l.front(), l.back() ); };
-auto insert = [](auto&& m, auto&& e) { m.insert(e); };
+auto insert = [](auto&& m, auto&& e) { m.insert(e); return m; };
 //auto to_list = []() { list<decltype(a)> l; return reduce(insert, a); };
 //template<class T> to_list() { list<T> l; reduce(insert, l) )
 auto print = [](auto&& x) { cout << string(x) << endl; };
@@ -107,9 +107,9 @@ int main()
 	auto t1 = std::chrono::high_resolution_clock::now();
 	auto ra = s
 		| split_async('\n')
-		| [](auto&& sv) { return sv | split_async('=') | ~reduce([](auto&& psv, auto&& sv) { if(psv.first.empty()) psv.first = sv; else psv.second = sv; }, pair<string_view, string_view>()); }
-		| ~filter([](auto&& psv) {return !psv.second.empty(); })
-		| ~reduce(insert, m)
+		| [](auto&& sv) { return sv | split_async('=') | reduce([](auto&& psv, auto&& sv) { if(psv.first.empty()) psv.first = sv; else psv.second = sv; return psv; }, pair<string_view, string_view>()); }
+		| filter([](auto&& psv) {return !psv.second.empty(); })
+		| reduce(insert, m)
 	;
 	auto t2 = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double, std::milli> ms = t2 - t1;
@@ -123,9 +123,9 @@ int main()
 	auto r = s
 		| split('\n')
 		| split('=')
-		| ~filter([](auto&& p) {return p.size() == 2; })
-		| ~transform(to_pair)
-		| ~reduce(insert, mm)
+		| filter([](auto&& p) {return p.size() == 2; })
+		| transform(to_pair)
+		| reduce(insert, mm)
 		;
 	auto t4 = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double, std::milli> ms2 = t4 - t3;

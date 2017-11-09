@@ -34,9 +34,9 @@ auto square = [](auto x) { return x*x; };
 using just = optional<int>;
 auto nothing = just();
 auto ints() { int n = 0; while(true) co_yield ++n; }
-auto take(unsigned n) { return [n](auto g) { auto cnt = n; for(auto&& i : g) if(cnt--) co_yield i; else break; }; }
-auto sum() { return [](auto&& g) { return accumulate(begin(g), end(g), 0, plus<int>()); }; }
-auto insert = [](auto&& m, auto&& e) { m.insert(e); };
+auto take(unsigned n) { return ~[n](auto g) { auto cnt = n; for(auto&& i : g) if(cnt--) co_yield i; else break; }; }
+auto sum() { return ~[](auto&& g) { return accumulate(begin(g), end(g), 0, plus<int>()); }; }
+auto insert = [](auto&& m, auto&& e) { m.insert(std::move(e)); return m; };
 
 auto split(char c) { return [c](string_view s) {return split(s, c); }; }
 auto split_gen(char c) { return [c](string_view s) {return split_gen(s, c); }; }
@@ -89,7 +89,7 @@ namespace tests
 
 		TEST_METHOD(Generator)
 		{
-			Assert::AreEqual(20, ints() | square | ~take(5) | ~filter(even) | ~sum());
+			Assert::AreEqual(20, ints() | square | take(5) | filter(even) | sum());
 		}
 
 		TEST_METHOD(Parsing)
@@ -141,12 +141,13 @@ namespace tests
 #else
 			for(int i = 0; i < 100'000; i++) {
 #endif
-				m.clear();
-				"a=3\nb=xyz\nnoval\n\n"
+				m = "a=3\nb=xyz\nnoval\n\n"
 					| split_gen('\n')
-					| [](auto&& sv) { return sv | split_gen('=') | ~reduce([](auto&& psv, auto&& sv) { if(psv.first.empty()) psv.first = sv; else psv.second = sv; }, pair<string_view, string_view>()); }
-					| ~filter([](auto&& psv) {return !psv.second.empty(); })
-					| ~reduce(insert, m);
+					| [](auto&& sv) { return sv 
+						| split_gen('=') 
+						| reduce([](auto&& psv, auto&& sv) { if(psv.first.empty()) psv.first = sv; else psv.second = sv; return psv; }, pair<string_view, string_view>()); }
+					| filter([](auto&& psv) {return !psv.second.empty(); })
+					| ~[](auto&& g) { return map<string, string>(begin(g), end(g)); };
 			}
 			Assert::AreEqual(2u, m.size());
 			Assert::AreEqual("3"s, m["a"s]);
