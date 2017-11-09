@@ -1,5 +1,5 @@
 ========================================================================
-    CONSOLE APPLICATION : [!output PROJECT_NAME] Project Overview
+    Monads
 ========================================================================
 
 C++ Implementation of some thoughts about Monads, FOP, etc.
