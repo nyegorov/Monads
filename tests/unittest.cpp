@@ -81,10 +81,11 @@ namespace tests
 		TEST_METHOD(Optional)
 		{
 			auto half = [](int x) { return x % 2 ? nothing : just(x/2); };
-			Assert::AreEqual(just(64), 4 | square | half | square);
-			Assert::AreEqual(nothing,  5 | square | half | square);
-			Assert::AreEqual(just(64), just(4) | square | half | square);
-			Assert::AreEqual(nothing,  nothing | square | half | square);
+			auto chain = [=](auto x) { return x | square | half | square; };
+			Assert::AreEqual(just(64), 4 | chain);
+			Assert::AreEqual(nothing,  5 | chain);
+			Assert::AreEqual(just(64), just(4) | chain);
+			Assert::AreEqual(nothing,  nothing | chain);
 		}
 
 		TEST_METHOD(Generator)
