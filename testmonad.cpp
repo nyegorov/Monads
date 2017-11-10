@@ -22,17 +22,28 @@ generator<int> double_gen(int x) { co_yield x; co_yield x; };
 auto take(unsigned n) { return ~[n](auto g) { auto cnt = n; for(auto&& i : g) if(cnt--) co_yield i; else break; }; }
 auto sum = [](auto&& g) { return accumulate(begin(g), end(g), 0, plus<int>()); };
 
-/*future<int> myasync() {
-	auto r = co_await square_async(4);
-	return r*r;
-}*/
+
+template<class T> class Reader {
+	string env;
+	T val;
+public:
+	Reader(T val) : val(val) {};
+	Reader(T val, string env) : val(val), env(env) {};
+	T value() const { return val; }
+	string get() const { return env; }
+};
+
+template <class A> struct fmap<Reader<A>> { template<class F> auto operator() (Reader<A>& w, F f) { return Reader<decltype(declval<A>() | f)>(w.value() | f, w.message()); }; };
+template <class A> struct join<Reader<Reader<A>>> { auto operator() (Reader<Reader<A>>&& ww) { return Reader<A>{ ww.value().value(), ww.message() + ", " + ww.value().message() }; }; };
+
+
+template<class T, class F> T runReader(Reader<T> r, F f) { return f(r.value()); };
+template<class T> T ask(Reader<T> r) { return r.get(); };
 
 int main()
 {
-	auto r = ints() | square | take(5) | filter(even) | double_gen | ~sum;// | double_gen;// | ~sum;
+	auto greeter = [](auto r) { auto name = ask(r); return Reader<string>("hello, " + name + "!"); };
 
-	//for(auto i : r)	cout << i;
-//	myasync().get();
-	cout << r;
+	//auto r = runReader(Reader<string>{"", "world"}, greeter);
 	return 0;
 }

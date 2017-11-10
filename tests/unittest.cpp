@@ -99,7 +99,21 @@ namespace tests
 			Assert::AreEqual(z, -5);
 		}
 
-		TEST_METHOD(OptionalMonad)
+		TEST_METHOD(Parsing)
+		{
+			auto l = "3,4,x6,5"
+				| split(',')
+				| parse<int>
+				| square
+				| [](auto n) { return to_string(n); };
+			Assert::AreEqual(4u, l.size());
+			Assert::AreEqual("9"s, l.front().value());	l.pop_front();
+			Assert::AreEqual("16"s, l.front().value());	l.pop_front();
+			Assert::AreEqual(false, (bool)l.front());	l.pop_front();
+			Assert::AreEqual("25"s, l.front().value());	l.pop_front();
+		}
+
+		TEST_METHOD(MaybeMonad)
 		{
 			auto half = [](int x) { return x % 2 ? nothing : just(x/2); };
 			auto chain = [=](auto x) { return x | square | half | square; };
@@ -120,20 +134,6 @@ namespace tests
 			Assert::AreEqual(just(160), 8 | square_async | mul(5) | half_async | ~get);
 		}
 
-		TEST_METHOD(Parsing)
-		{
-			auto l = "3,4,x6,5"
-				| split(',')
-				| parse<int>
-				| square
-				| [](auto n) { return to_string(n); };
-			Assert::AreEqual(4u, l.size());
-			Assert::AreEqual("9"s, l.front().value());	l.pop_front();
-			Assert::AreEqual("16"s, l.front().value());	l.pop_front();
-			Assert::AreEqual(false, (bool)l.front());	l.pop_front();
-			Assert::AreEqual("25"s, l.front().value());	l.pop_front();
-		}
-
 		TEST_METHOD(WriterMonad)
 		{
 			auto half = [](int x) { return tell<int>(to_string(x) + " is halved!") | (x / 2); };
@@ -142,17 +142,19 @@ namespace tests
 			Assert::AreEqual("8 is halved!, 4 is halved!"s, msg);
 		}
 
-		TEST_METHOD(CustomType)
+		TEST_METHOD(CustomMonad)
 		{
 			using Bank = bank_account<int>;
-			auto deposit  = [](auto money)   { return [money](auto account) {return account + money; }; };
-			auto withdraw = [](auto money)   { return [money](auto account) {return account - money; }; };
-			auto check	  = [](auto account) { return account < 0 ? nothing : just(account); };
+			auto deposit  = [](auto money)	{ return [money](auto account) {return account + money; }; };
+			auto withdraw = [](auto money)	{ return [money](auto account) {return account - money; }; };
+			auto interest = [](auto pcent)	{ return [pcent](auto account) {return Bank{ account + account * pcent / 100 }; }; };
+			auto check	  = [](auto account){ return account < 0 ? nothing : just(account); };
 			auto amount   = [](auto&& b){ return b.amount(); };
-			Assert::AreEqual(just(49), Bank(5)
+			Assert::AreEqual(just(144), Bank(5)
 				| deposit(4)
 				| withdraw(5)
-				| deposit(3)
+				| deposit(6)
+				| interest(20)
 				| check
 				| square
 				| ~amount
@@ -163,10 +165,10 @@ namespace tests
 				| check
 				| ~amount
 			);
-			Assert::AreEqual(0, copy_ctors);
-			Assert::AreEqual(8, move_ctors);
-			Assert::AreEqual(10, bank_ctors);
-			Assert::AreEqual(18, bank_dtors);
+			Assert::AreEqual(2, copy_ctors);
+			Assert::AreEqual(9, move_ctors);
+			Assert::AreEqual(13, bank_ctors);
+			Assert::AreEqual(24, bank_dtors);
 		}
 
 		TEST_METHOD(Performance)
