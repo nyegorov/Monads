@@ -2,6 +2,9 @@
 
 namespace monads {
 
+using std::declval;
+using std::forward;
+
 template <typename A, typename B> struct rebind { typedef B type; };
 template <class A, class B> struct rebind<std::list<A>, B> { typedef std::list<B> type; };
 template <class A, class B> struct rebind<std::vector<A>, B> { typedef std::vector<B> type; };
@@ -11,32 +14,37 @@ template <class A, class B> struct rebind<std::vector<A>, B> { typedef std::vect
 
 // generic
 template <class X> struct fmap {
-	template<class T, class F> auto operator() (T&& x, F f) { return f(std::forward<T>(x)); };
+	template<class T, class F> auto operator() (T&& x, F f) { return f(forward<T>(x)); };
 };
 
 template <class X> struct join {
-	template<class A> auto operator() (A&& a) { return std::forward<A>(a); };
+	template<class A> auto operator() (A&& a) { return forward<A>(a); };
 };
+
+template<class MA, typename F> auto mapply(MA&& ma, F f)
+{
+	return join<decltype(fmap<std::decay_t<MA>>()(ma, f))>()(fmap<std::decay_t<MA>>()(forward<MA>(ma), f));
+}
 
 // optional
 template <class A> struct fmap<std::optional<A>> {
 	template<class F> auto operator() (const std::optional<A>& o, F f) {
-		//return o ? std::optional<std::result_of_t<F(A)>>{f(o.value())} : std::optional<std::result_of_t<F(A)>>{};
-		return o ? std::optional<decltype(declval<A>() | f)>{o.value() | f} : std::optional<decltype(declval<A>() | f)>{};
+		return o ?	std::optional<decltype(mapply(declval<A>(), f))>{mapply(o.value(), f)} : 
+					std::optional<decltype(mapply(declval<A>(), f))>{};
 	};
 };
 
 template <class A> struct join<std::optional<std::optional<A>>> {
 	auto operator() (std::optional<std::optional<A>>&& o) {
-		return o ? o.value() : std::optional<std::optional<A>::value_type>{};
+		return o ? o.value() : std::optional<A>{};
 	};
 };
 
 // list
 template <class A> struct fmap<std::list<A>> {
 	template<class F> auto operator() (std::list<A>& la, F f) {
-		std::list<decltype(declval<A>() | f)> lb;
-		for(auto&& a : la)	lb.push_back(a | f);
+		std::list<decltype(mapply(std::declval<A>(), f))> lb;
+		for(auto&& a : la)	lb.push_back(mapply(a, f));
 		return lb;
 	};
 };
@@ -52,28 +60,39 @@ template <class A> struct fmap<std::list<A>> {
 // generator
 template <class A> struct fmap<std::experimental::generator<A>> {
 	template<class F> auto operator() (std::experimental::generator<A>& ga, F f) {
-		for(auto&& a : ga) co_yield a | f;
+		for(auto&& a : ga) co_yield mapply(a, f);
 	};
 };
 
-/*template <class A> struct join<std::experimental::generator<std::experimental::generator<A>>> {
-	auto operator() (std::experimental::generator<std::experimental::generator<A>>& gga) {
+template <class A> struct join<std::experimental::generator<std::experimental::generator<A>>> {
+	auto operator() (std::experimental::generator<std::experimental::generator<A>> gga) {
 		for(auto& ga : gga)
-			for(auto&& a : ga) co_yield a;
+			for(auto&& a : const_cast<std::experimental::generator<A>&>(ga))
+				co_yield a;
 	};
-};*/
+};
+
+// future
+template <class A> struct fmap<std::future<A>> {
+	template<class F> auto operator() (std::future<A>& fut, F f) -> std::future<decltype(std::declval<A>() | f)> {
+		co_return co_await fut | f;
+	};
+};
+
+template <class A> struct join<std::future<std::future<A>>> {
+	auto operator() (std::future<std::future<A>> ff) -> std::future<A> {
+		co_return co_await co_await ff;
+	};
+};
 
 
 // magic starts here...
 
 template<typename F> struct fwrap { F f; };
 
-template<class MA, typename F> auto operator | (MA&& ma, F f)
-{
-	return join<decltype(fmap<std::decay_t<MA>>()(ma, f))>()(fmap<std::decay_t<MA>>()(std::forward<MA>(ma), f));
-}
-template<class MA, typename F> auto operator | (MA&& ma, fwrap<F>&& f) { return f.f(std::forward<MA>(ma)); };
-template<class F> auto operator ~ (F f) { return fwrap<F> {f}; };
+template<class MA, typename F> auto operator | (MA&& ma, F&& f)			{ return mapply(forward<MA>(ma), forward<F>(f)); }
+template<class MA, typename F> auto operator | (MA&& ma, fwrap<F>&& f)	{ return f.f(forward<MA>(ma)); };
+template<class F> auto operator ~ (F f)									{ return fwrap<F> {f}; };
 
 template<typename F> struct filter_t
 {
@@ -101,7 +120,8 @@ template<class F> auto transform(F f)
 
 template<class F, class S> auto reduce(F f, S&& s)
 {
-	return ~[f, s = std::forward<S>(s)](auto&& l) { return std::accumulate(begin(l), end(l), s, f); };
+	return ~[f, s = forward<S>(s)](auto&& l) { return std::accumulate(begin(l), end(l), s, f); };
 }
+
 
 }

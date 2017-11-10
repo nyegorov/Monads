@@ -35,8 +35,12 @@ using just = optional<int>;
 auto nothing = just();
 auto ints() { int n = 0; while(true) co_yield ++n; }
 auto take(unsigned n) { return ~[n](auto g) { auto cnt = n; for(auto&& i : g) if(cnt--) co_yield i; else break; }; }
-auto sum() { return ~[](auto&& g) { return accumulate(begin(g), end(g), 0, plus<int>()); }; }
+auto sum = [](auto&& g) { return accumulate(begin(g), end(g), 0, plus<int>()); };
 auto insert = [](auto&& m, auto&& e) { m.insert(std::move(e)); return m; };
+auto mul(int n) { return [n](int x) { return x * n; }; };
+generator<int> double_gen(int x) { co_yield x; co_yield x; };
+auto square_async = [](int x) { return async([](int n) { return n*n; }, x); };
+auto half_async = [](int x) { return async([](int n) { return n % 2 ? nothing : just(n / 2); }, x); };
 
 auto split(char c) { return [c](string_view s) {return split(s, c); }; }
 auto split_gen(char c) { return [c](string_view s) {return split_gen(s, c); }; }
@@ -59,7 +63,24 @@ public:
 };
 template <class A, class B> struct rebind<bank_account<A>, B> { typedef bank_account<B> type; };
 template <class A> struct fmap<bank_account<A>> { template<class F> auto operator() (bank_account<A>& ma, F f) { return bank_account<decltype(declval<A>() | f)>(ma.amount() | f); }; };
-template <class A> struct join<bank_account<bank_account<A>>> { auto operator() (bank_account<bank_account<A>>&& mma) { return mma.amount(); }; };
+template <class A> struct join<bank_account<bank_account<A>>> { auto operator() (bank_account<bank_account<A>>&& mma) { return bank_account<A>{ mma.amount().amount() }; }; };
+
+template<class T> class Writer {
+	T val;
+	string msg;
+public:
+	Writer(T val) : val(val) {};
+	Writer(T val, string msg) : val(val), msg(msg) {};
+	T value() const { return val; }
+	string message() const { return msg; }
+};
+
+template <class A> struct fmap<Writer<A>> { template<class F> auto operator() (Writer<A>& w, F f) { return Writer<decltype(declval<A>() | f)>(w.value() | f, w.message()); }; };
+template <class A> struct join<Writer<Writer<A>>> { auto operator() (Writer<Writer<A>>&& ww) { return Writer<A>{ ww.value().value(), ww.message() + ", " + ww.value().message() }; }; };
+
+template<class T> tuple<T, string> runWriter(Writer<T> w) { return { w.value(), w.message() }; };
+template<class T> Writer<T> tell(string msg) { return { T(), msg }; };
+
 
 namespace Microsoft::VisualStudio::CppUnitTestFramework {
 template<> inline std::wstring ToString<just>(const just& v) { return v ? to_wstring(v.value()) : L"nothing"; }
@@ -78,7 +99,7 @@ namespace tests
 			Assert::AreEqual(z, -5);
 		}
 
-		TEST_METHOD(Optional)
+		TEST_METHOD(OptionalMonad)
 		{
 			auto half = [](int x) { return x % 2 ? nothing : just(x/2); };
 			auto chain = [=](auto x) { return x | square | half | square; };
@@ -88,9 +109,15 @@ namespace tests
 			Assert::AreEqual(nothing,  nothing | chain);
 		}
 
-		TEST_METHOD(Generator)
+		TEST_METHOD(GeneratorMonad)
 		{
-			Assert::AreEqual(20, ints() | square | take(5) | filter(even) | sum());
+			Assert::AreEqual(40, ints() | square | take(5) | filter(even) | double_gen | ~sum);
+		}
+
+		TEST_METHOD(AsyncMonad)
+		{
+			auto get = [](auto f) { return f.get(); };
+			Assert::AreEqual(just(160), 8 | square_async | mul(5) | half_async | ~get);
 		}
 
 		TEST_METHOD(Parsing)
@@ -107,12 +134,20 @@ namespace tests
 			Assert::AreEqual("25"s, l.front().value());	l.pop_front();
 		}
 
+		TEST_METHOD(WriterMonad)
+		{
+			auto half = [](int x) { return tell<int>(to_string(x) + " is halved!") | (x / 2); };
+			auto [val, msg] = runWriter(8 | half | half);
+			Assert::AreEqual(2, val);
+			Assert::AreEqual("8 is halved!, 4 is halved!"s, msg);
+		}
+
 		TEST_METHOD(CustomType)
 		{
 			using Bank = bank_account<int>;
-			auto deposit  = [](auto dx) { return [dx](auto x) {return x + dx; }; };
-			auto withdraw = [](auto dx) { return [dx](auto x) {return x - dx; }; };
-			auto check	  = [](auto x)  { return x < 0 ? nothing : just(x); };
+			auto deposit  = [](auto money)   { return [money](auto account) {return account + money; }; };
+			auto withdraw = [](auto money)   { return [money](auto account) {return account - money; }; };
+			auto check	  = [](auto account) { return account < 0 ? nothing : just(account); };
 			auto amount   = [](auto&& b){ return b.amount(); };
 			Assert::AreEqual(just(49), Bank(5)
 				| deposit(4)
