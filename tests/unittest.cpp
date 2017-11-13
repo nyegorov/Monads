@@ -75,11 +75,29 @@ public:
 	string message() const { return msg; }
 };
 
-template <class A> struct fmap<Writer<A>> { template<class F> auto operator() (Writer<A>& w, F f) { return Writer<decltype(declval<A>() | f)>(w.value() | f, w.message()); }; };
-template <class A> struct join<Writer<Writer<A>>> { auto operator() (Writer<Writer<A>>&& ww) { return Writer<A>{ ww.value().value(), ww.message() + ", " + ww.value().message() }; }; };
+template<class T> auto make_writer(T x) { return Writer<T>(x); }
+template<class T> auto make_writer(T x, string msg) { return Writer<T>(x, msg); }
+
+template <class A> struct fmap<Writer<A>> { template<class F> auto operator() (Writer<A>& w, F f) { return make_writer(f(w.value()), w.message()); }; };
+template <class A> struct join<Writer<Writer<A>>> { auto operator() (Writer<Writer<A>>&& ww) { return Writer<A>{ ww.value().value(), ww.message() + ww.value().message() }; }; };
+template <class T> auto returnW(T x) { return make_writer(x); };
 
 template<class T> tuple<T, string> runWriter(Writer<T> w) { return { w.value(), w.message() }; };
 template<class T> Writer<T> tell(string msg) { return { T(), msg }; };
+
+template<class F> class Reader {
+	F func;
+public:
+	Reader(F func) : func(func) {};
+	template<class T> auto operator () (T x) const { return func(x); }
+};
+
+template<class F> auto make_reader(F f) { return Reader<F>(f); }
+
+template <class A> struct fmap<Reader<A>> { template<class F> auto operator() (Reader<A>& r, F f) { return make_reader([r, f](auto e) { return f(r(e))(e); }); }; };
+template <class T> auto returnR(T x) { return make_reader([x](auto _) {return x; }); };
+auto ask() { return make_reader([](auto x) {return x; }); };
+template<class R, class E> auto runReader(R r, E e) { return r(e); };
 
 
 namespace Microsoft::VisualStudio::CppUnitTestFramework {
@@ -136,10 +154,17 @@ namespace tests
 
 		TEST_METHOD(WriterMonad)
 		{
-			auto half = [](int x) { return tell<int>(to_string(x) + " is halved!") | (x / 2); };
+			auto half = [](int x) { return tell<int>("I just halved " + to_string(x) + "!") | [x](int) {return returnW(x / 2); }; };
 			auto [val, msg] = runWriter(8 | half | half);
 			Assert::AreEqual(2, val);
-			Assert::AreEqual("8 is halved!, 4 is halved!"s, msg);
+			Assert::AreEqual("I just halved 8!I just halved 4!"s, msg);
+		}
+
+		TEST_METHOD(ReaderMonad)
+		{
+			auto greeter = ask() | [](auto name) { return returnR("hello, "s + name + "!"); };
+			auto r = runReader(greeter, "world");
+			Assert::AreEqual("hello, world!"s, r);
 		}
 
 		TEST_METHOD(CustomMonad)
