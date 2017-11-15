@@ -198,7 +198,7 @@ namespace tests
 		{
 			map<string, string> m;
 #ifdef _DEBUG
-			for(int i = 0; i < 1'000; i++) {
+			for(int i = 0; i < 2'000; i++) {
 #else
 			for(int i = 0; i < 100'000; i++) {
 #endif
