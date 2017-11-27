@@ -22,7 +22,12 @@ generator<int> double_gen(int x) { co_yield x; co_yield x; };
 auto take(unsigned n) { return ~[n](auto g) { auto cnt = n; for(auto&& i : g) if(cnt--) co_yield i; else break; }; }
 auto sum = [](auto&& g) { return accumulate(begin(g), end(g), 0, plus<int>()); };
 
+template<class T> void f(T t) { cout << t << endl; }
+template<class T> void f(vector<T> vt) { cout << "vector" << endl; }
+
 int main()
 {
+	f(4);
+	f(vector<int>{1, 2, 3});
 	return 0;
 }

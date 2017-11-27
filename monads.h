@@ -11,13 +11,11 @@ template <class X> struct fmap {
 	template<class T, class F> constexpr auto operator() (T&& x, F f) { return f(forward<T>(x)); };
 };
 
-template <class X> struct join {
-	template<class A> constexpr auto operator() (A&& a) { return forward<A>(a); };
-};
+template<class A> constexpr auto join(A&& a) { return forward<A>(a); };
 
 template<class MA, typename F> constexpr auto mapply(MA&& ma, F f)
 {
-	return join<decltype(fmap<decay_t<MA>>()(ma, f))>()(fmap<decay_t<MA>>()(forward<MA>(ma), f));
+	return join(fmap<decay_t<MA>>()(forward<MA>(ma), f));
 }
 
 // magic starts here...
@@ -79,11 +77,7 @@ template <class A> struct fmap<optional<A>> {
 	};
 };
 
-template <class A> struct join<optional<optional<A>>> {
-	constexpr auto operator() (optional<optional<A>>&& o) {
-		return o ? o.value() : optional<A>{};
-	};
-};
+template <class A> constexpr auto join(optional<optional<A>>&& o) {	return o ? o.value() : optional<A>{}; };
 
 // list
 template <class A, class B> struct rebind<list<A>, B> { typedef list<B> type; };
@@ -113,11 +107,9 @@ template <class A> struct fmap<generator<A>> {
 	};
 };
 
-template <class A> struct join<generator<generator<A>>> {
-	constexpr auto operator() (generator<generator<A>> gga) {
-		for(auto&& ga : gga)
-			for(auto&& a : const_cast<generator<A>&>(ga)) co_yield a;
-	};
+template <class A> constexpr auto join(generator<generator<A>> gga) {
+	for(auto&& ga : gga)
+		for(auto&& a : const_cast<generator<A>&>(ga)) co_yield a;
 };
 
 // future
@@ -127,11 +119,7 @@ template <class A> struct fmap<future<A>> {
 	};
 };
 
-template <class A> struct join<future<future<A>>> {
-	constexpr auto operator() (future<future<A>> ffa) -> future<A> {
-		co_return co_await co_await ffa;
-	};
-};
+template <class A> constexpr auto join(future<future<A>> ffa) -> future<A> { co_return co_await co_await ffa; };
 
 
 }

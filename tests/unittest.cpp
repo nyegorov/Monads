@@ -63,7 +63,7 @@ public:
 };
 template <class A, class B> struct rebind<bank_account<A>, B> { typedef bank_account<B> type; };
 template <class A> struct fmap<bank_account<A>> { template<class F> auto operator() (bank_account<A>& ma, F f) { return bank_account<decltype(declval<A>() | f)>(ma.amount() | f); }; };
-template <class A> struct join<bank_account<bank_account<A>>> { auto operator() (bank_account<bank_account<A>>&& mma) { return bank_account<A>{ mma.amount().amount() }; }; };
+template <class A> auto join(bank_account<bank_account<A>>&& mma) { return bank_account<A>{ mma.amount().amount() }; };
 
 struct null_t {};
 template<class T> class Writer {
@@ -78,7 +78,7 @@ public:
 template<class T> auto make_writer(T x, string msg) { return Writer<T>(x, msg); }
 
 template <class A> struct fmap<Writer<A>> { template<class F> auto operator() (Writer<A>& w, F f) { return make_writer(f(w.value()), w.message()); }; };
-template <class A> struct join<Writer<Writer<A>>> { auto operator() (Writer<Writer<A>>&& ww) { return Writer<A>{ ww.value().value(), ww.message() + ww.value().message() }; }; };
+template <class A> auto join(Writer<Writer<A>>&& ww) { return Writer<A>{ ww.value().value(), ww.message() + ww.value().message() }; };
 
 template<class T> tuple<T, string> runWriter(Writer<T> w) { return { w.value(), w.message() }; };
 Writer<null_t> tell(string msg) { return { null_t{}, msg }; };
