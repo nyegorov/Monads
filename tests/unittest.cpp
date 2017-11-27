@@ -39,8 +39,6 @@ auto sum = [](auto&& g) { return accumulate(begin(g), end(g), 0, plus<int>()); }
 auto insert = [](auto&& m, auto&& e) { m.insert(std::move(e)); return m; };
 auto mul(int n) { return [n](int x) { return x * n; }; };
 generator<int> double_gen(int x) { co_yield x; co_yield x; };
-auto square_async = [](int x) { return async([](int n) { return n*n; }, x); };
-auto half_async = [](int x) { return async([](int n) { return n % 2 ? nothing : just(n / 2); }, x); };
 
 auto split(char c) { return [c](string_view s) {return split(s, c); }; }
 auto split_gen(char c) { return [c](string_view s) {return split_gen(s, c); }; }
@@ -145,7 +143,10 @@ namespace tests
 
 		TEST_METHOD(AsyncMonad)
 		{
+			auto square_async = [](int x) { return async([](int n) { return n*n; }, x); };
+			auto half_async = [](int x) { return async([](int n) { return n % 2 ? nothing : just(n / 2); }, x); };
 			auto get = [](auto f) { return f.get(); };
+
 			Assert::AreEqual(just(160), 8 | square_async | mul(5) | half_async | ~get);
 		}
 
