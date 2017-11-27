@@ -7,21 +7,11 @@ using std::declval;
 using std::forward;
 
 // generic monad interface
-template <class X> struct fmap {
-	template<class T, class F> constexpr auto operator() (T&& x, F f) { return f(forward<T>(x)); };
-};
-
-template<class A> constexpr auto join(A&& a) { return forward<A>(a); };
-
-template<class MA, typename F> constexpr auto mapply(MA&& ma, F f)
-{
-	return join(fmap<decay_t<MA>>()(forward<MA>(ma), f));
-}
-
-// magic starts here...
+template<class A, class F> constexpr auto mmap(const A& a, F f)	{ return f(a); };
+template<class A> constexpr auto mjoin(A&& a)					{ return forward<A>(a); };
+template<class MA, class F> constexpr auto mapply(MA&& ma, F f)	{ return mjoin(mmap(ma, forward<F>(f))); }
 
 template<typename F> struct fwrap { F f; };
-
 template<class MA, typename F> constexpr auto operator | (MA&& ma, F&& f)			{ return mapply(forward<MA>(ma), forward<F>(f)); }
 template<class MA, typename F> constexpr auto operator | (MA&& ma, fwrap<F>&& f)	{ return f.f(forward<MA>(ma)); };
 template<class F> constexpr auto operator ~ (F f)									{ return fwrap<F> {f}; };
@@ -70,56 +60,46 @@ using std::experimental::generator;
 using std::future;
 
 // optional
-template <class A> struct fmap<optional<A>> {
-	template<class F> constexpr auto operator() (const optional<A>& o, F f) {
-		return o ? optional<decltype(mapply(declval<A>(), f))>{mapply(o.value(), f)} :
-			optional<decltype(mapply(declval<A>(), f))>{};
-	};
+template <class A, class F> constexpr auto mmap(const optional<A>& o, F&& f) {
+	using OB = optional<decltype(mapply(declval<A>(), f))>;
+	return o ? OB{mapply(o.value(), f)} : OB{};
 };
 
-template <class A> constexpr auto join(optional<optional<A>>&& o) {	return o ? o.value() : optional<A>{}; };
+template <class A> constexpr auto mjoin(optional<optional<A>>&& o) {	return o ? o.value() : optional<A>{}; };
 
 // list
 template <class A, class B> struct rebind<list<A>, B> { typedef list<B> type; };
 
-template <class A> struct fmap<list<A>> {
-	template<class F> constexpr auto operator() (list<A>& la, F f) {
-		list<decltype(mapply(declval<A>(), f))> lb;
-		std::transform(la.begin(), la.end(), std::back_inserter(lb), [f](auto &&a) {return mapply(a, f); });
-		return lb;
-	};
+template <class A, class F> constexpr auto mmap(const list<A>& la, F f) {
+	list<decltype(mapply(declval<A>(), f))> lb;
+	std::transform(la.begin(), la.end(), std::back_inserter(lb), [f](auto &&a) {return mapply(a, f); });
+	return lb;
 };
 
 /*// Not sure, do I want to flatten recursive lists or not?
 
-template <class A> struct join<std::list<std::list<A>>> {
-	auto operator() (std::list<std::list<A>>&& la) {
-		std::list<A> l;
-		for(auto&& a : la)	l.splice(l.end(), a);
-		return l;
-	};
+template <class A> auto mjoin(std::list<std::list<A>>&& la) {
+	std::list<A> l;
+	for(auto&& a : la)	l.splice(l.end(), a);
+	return l;
 };*/
 
 // generator
-template <class A> struct fmap<generator<A>> {
-	template<class F> constexpr auto operator() (generator<A>& ga, F f) {
-		for(auto&& a : ga) co_yield mapply(a, f);
-	};
+template <class A, class F> constexpr auto mmap(generator<A>& ga, F f) {
+	for(auto&& a : ga) co_yield mapply(a, f);
 };
 
-template <class A> constexpr auto join(generator<generator<A>> gga) {
+template <class A> constexpr auto mjoin(generator<generator<A>> gga) {
 	for(auto&& ga : gga)
 		for(auto&& a : const_cast<generator<A>&>(ga)) co_yield a;
 };
 
 // future
-template <class A> struct fmap<future<A>> {
-	template<class F> constexpr auto operator() (future<A>& fa, F f) -> future<decltype(mapply(declval<A>(), f))> {
-		co_return mapply(co_await fa, f);
-	};
+template <class A, class F> constexpr auto mmap(future<A>& fa, F f) -> future<decltype(mapply(declval<A>(), f))> {
+	co_return mapply(co_await fa, f);
 };
 
-template <class A> constexpr auto join(future<future<A>> ffa) -> future<A> { co_return co_await co_await ffa; };
+template <class A> constexpr auto mjoin(future<future<A>> ffa) -> future<A> { co_return co_await co_await ffa; };
 
 
 }
