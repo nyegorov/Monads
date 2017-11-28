@@ -37,6 +37,19 @@ auto sum = [](auto&& g) {
 	return accumulate(begin(g), end(g), 0, plus<int>()); 
 };
 
+
+template <class T> struct str1
+{
+	T t;
+};
+
+template <template<class> class T> struct str2
+{
+	T<int> t;
+};
+
+
+
 int main()
 {
 	auto square_async = [](int x) { return async([](int n) { return n*n; }, x); };
@@ -45,4 +58,8 @@ int main()
 	auto process_async = [](int x) { return async([](int n) { this_thread::sleep_for(1s); return n*n; }, x); };
 
 	auto res = list<int>{ 1, 2, 3 } | process_async | transform(get) | ~sum;
+
+	str2<str1> mystr2;
+	mystr2.t.t = 5;
+
 }

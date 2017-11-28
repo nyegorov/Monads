@@ -13,10 +13,8 @@ template<class MA, typename F> constexpr auto operator | (MA&& ma, F f)			{ retu
 template<class MA, typename F> constexpr auto operator | (MA&& ma, fwrap<F>&& f){ return f.f(std::forward<MA>(ma)); };
 template<class F> constexpr auto operator ~ (F f)								{ return fwrap<F> {f}; };
 
-template <typename A, typename B> struct rebind { typedef B type; };
-
-//template <class C, class B> struct rebase1;// { typedef B type; };
-//template <template<class...> class C, class A, class B> struct rebase1<C<A>, B> { typedef C<B> type; };
+template <class C, class B> struct rebind;
+template <template<class...> class C, class A, template<class> class AL, class B> struct rebind<C<A,AL<A>>, B> { typedef C<B,AL<B>> type; };
 
 // special aggregate functions 
 template<typename F> struct filter_t
@@ -45,7 +43,7 @@ template<class F> constexpr auto transform(F f)
 
 template<class F, class S> constexpr auto reduce(F f, S&& s)
 {
-	return ~[f, s = std::forward<S>(s)](auto&& l) { return std::accumulate(std::begin(l), std::end(l), s, f); };
+	return ~[f, s = std::forward<S>(s)](auto&& ma) { return std::accumulate(std::begin(ma), std::end(ma), s, f); };
 }
 
 // some standard monads 
@@ -64,17 +62,15 @@ template <class A, class F> constexpr auto mmap(optional<A>& o, F&& f) {
 template <class A> constexpr auto mjoin(optional<optional<A>>&& o) {	return o ? o.value() : optional<A>{}; };
 
 // list
-template <class A, class B> struct rebind<list<A>, B> { typedef list<B> type; };
-
-template <class A, class F> constexpr auto mmap(list<A>& la, F f) {
-	list<decltype(mapply(std::declval<A>(), f))> lb;
+template <class A, template<class> class AL, class F> constexpr auto mmap(list<A, AL<A>>& la, F f) {
+	using B = decltype(mapply(std::declval<A>(), f));
+	list<B, AL<B>> lb;
 	std::transform(la.begin(), la.end(), std::back_inserter(lb), [f](auto&& a) {return mapply(a, f); });
 	return lb;
 };
 
-/*// Not sure, do I want to flatten recursive lists or not?
-
-template <class A> auto mjoin(std::list<std::list<A>>&& la) {
+// Not sure, do I want to flatten recursive lists or not?
+/*template <class A> auto mjoin(std::list<std::list<A>>&& la) {
 	std::list<A> l;
 	for(auto&& a : la)	l.splice(l.end(), a);
 	return l;
