@@ -10,7 +10,7 @@ template<class MA, class F> constexpr auto mapply(MA&& ma, F f)	{ return mjoin(m
 // monad binding operator
 template<typename F> struct fwrap { F f; };
 template<class MA, typename F> constexpr auto operator | (MA&& ma, F f)			{ return mapply(std::forward<MA>(ma), f); }
-template<class MA, typename F> constexpr auto operator | (MA&& ma, fwrap<F> f)	{ return f.f(std::forward<MA>(ma)); };
+template<class MA, typename F> constexpr auto operator | (MA&& ma, fwrap<F>&& f){ return f.f(std::forward<MA>(ma)); };
 template<class F> constexpr auto operator ~ (F f)								{ return fwrap<F> {f}; };
 
 template <typename A, typename B> struct rebind { typedef B type; };
@@ -39,7 +39,7 @@ template<class F> constexpr auto transform(F f)
 	return ~[f](auto&& ma) {
 		rebind<std::decay_t<decltype(ma)>, decltype(f(*std::begin(ma)))>::type mb;
 		std::transform(std::begin(ma), std::end(ma), std::inserter(mb, std::end(mb)), f);
-		return lb;
+		return mb;
 	};
 }
 
@@ -56,7 +56,7 @@ using std::experimental::generator;
 using std::future;
 
 // optional
-template <class A, class F> constexpr auto mmap(const optional<A>& o, F&& f) {
+template <class A, class F> constexpr auto mmap(optional<A>& o, F&& f) {
 	using OB = optional<decltype(mapply(std::declval<A>(), f))>;
 	return o ? OB{mapply(o.value(), f)} : OB{};
 };
@@ -66,9 +66,9 @@ template <class A> constexpr auto mjoin(optional<optional<A>>&& o) {	return o ? 
 // list
 template <class A, class B> struct rebind<list<A>, B> { typedef list<B> type; };
 
-template <class A, class F> constexpr auto mmap(const list<A>& la, F f) {
+template <class A, class F> constexpr auto mmap(list<A>& la, F f) {
 	list<decltype(mapply(std::declval<A>(), f))> lb;
-	std::transform(la.begin(), la.end(), std::back_inserter(lb), [f](auto &&a) {return mapply(a, f); });
+	std::transform(la.begin(), la.end(), std::back_inserter(lb), [f](auto&& a) {return mapply(a, f); });
 	return lb;
 };
 

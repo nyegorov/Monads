@@ -145,9 +145,10 @@ namespace tests
 		{
 			auto square_async = [](int x) { return async([](int n) { return n*n; }, x); };
 			auto half_async = [](int x) { return async([](int n) { return n % 2 ? nothing : just(n / 2); }, x); };
-			auto get = [](auto f) { return f.get(); };
+			auto get = [](auto&& f) { return f.get(); };
 
 			Assert::AreEqual(just(160), 8 | square_async | mul(5) | half_async | ~get);
+			Assert::AreEqual(98, list<int>{ 1, 2, 3 } | square_async | square_async | transform(get) | ~sum);
 		}
 
 		TEST_METHOD(WriterMonad)
