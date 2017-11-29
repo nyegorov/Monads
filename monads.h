@@ -10,10 +10,12 @@ template<class MA, class F> constexpr auto mapply(MA&& ma, F f)	{ return mjoin(m
 // monad binding operator
 template<typename F> struct fwrap { F f; };
 template<class MA, typename F> constexpr auto operator | (MA&& ma, F f)			{ return mapply(std::forward<MA>(ma), f); }
+template<class MA, typename F> constexpr auto operator | (MA&& ma, fwrap<F>& f)	{ return f.f(std::forward<MA>(ma)); };
 template<class MA, typename F> constexpr auto operator | (MA&& ma, fwrap<F>&& f){ return f.f(std::forward<MA>(ma)); };
 template<class F> constexpr auto operator ~ (F f)								{ return fwrap<F> {f}; };
 
 template <class C, class B> struct rebind;
+template <template<class...> class C, class A, class B> struct rebind<C<A>, B> { typedef C<B> type; };
 template <template<class...> class C, class A, template<class> class AL, class B> struct rebind<C<A,AL<A>>, B> { typedef C<B,AL<B>> type; };
 
 // special aggregate functions 

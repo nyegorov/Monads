@@ -35,7 +35,7 @@ using just = optional<int>;
 auto nothing = just();
 auto ints() { int n = 0; while(true) co_yield ++n; }
 auto take(unsigned n) { return ~[n](auto g) { auto cnt = n; for(auto&& i : g) if(cnt--) co_yield i; else break; }; }
-auto sum = [](auto&& g) { return accumulate(begin(g), end(g), 0, plus<int>()); };
+auto sum = reduce(plus<int>(), 0);
 auto insert = [](auto&& m, auto&& e) { m.insert(std::move(e)); return m; };
 auto mul(int n) { return [n](int x) { return x * n; }; };
 generator<int> double_gen(int x) { co_yield x; co_yield x; };
@@ -43,7 +43,7 @@ generator<int> double_gen(int x) { co_yield x; co_yield x; };
 auto split(char c) { return [c](string_view s) {return split(s, c); }; }
 auto split_gen(char c) { return [c](string_view s) {return split_gen(s, c); }; }
 template<class T> optional<T> parse(string_view s);
-template<> optional<int> parse<int>(string_view s) { try { return optional<int>(stoi(s.data())); } catch(...) {} return optional<int>{}; };
+template<> optional<int> parse<int>(string_view s) { try { return { stoi(s.data()) }; } catch(...) { return {}; } };
 
 static int bank_ctors = 0;
 static int copy_ctors = 0;
@@ -138,7 +138,7 @@ namespace tests
 
 		TEST_METHOD(GeneratorMonad)
 		{
-			Assert::AreEqual(40, ints() | square | take(5) | filter(even) | double_gen | ~sum);
+			Assert::AreEqual(40, ints() | square | take(5) | filter(even) | double_gen | sum);
 		}
 
 		TEST_METHOD(AsyncMonad)
@@ -148,7 +148,7 @@ namespace tests
 			auto get = [](auto&& f) { return f.get(); };
 
 			Assert::AreEqual(just(160), 8 | square_async | mul(5) | half_async | ~get);
-			Assert::AreEqual(98, list<int>{ 1, 2, 3 } | square_async | square_async | transform(get) | ~sum);
+			Assert::AreEqual(98, list<int>{ 1, 2, 3 } | square_async | square_async | transform(get) | sum);
 		}
 
 		TEST_METHOD(WriterMonad)
