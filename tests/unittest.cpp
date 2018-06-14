@@ -119,7 +119,7 @@ namespace tests
 				| parse<int>
 				| square
 				| [](auto n) { return to_string(n); };
-			Assert::AreEqual(4u, l.size());
+			Assert::AreEqual(size_t(4u), l.size());
 			Assert::AreEqual("9"s, l.front().value());	l.pop_front();
 			Assert::AreEqual("16"s, l.front().value());	l.pop_front();
 			Assert::AreEqual(false, (bool)l.front());	l.pop_front();
@@ -212,7 +212,7 @@ namespace tests
 					| filter([](auto&& psv) {return !psv.second.empty(); })
 					| ~[](auto&& g) { return map<string, string>(begin(g), end(g)); };
 			}
-			Assert::AreEqual(2u, m.size());
+			Assert::AreEqual(size_t(2u), m.size());
 			Assert::AreEqual("3"s, m["a"s]);
 			Assert::AreEqual("xyz"s, m["b"s]);
 		}
