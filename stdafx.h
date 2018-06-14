@@ -17,6 +17,7 @@
 #include <chrono>
 #include <future>
 #include <iostream>
+#include <strstream>
 #include <iterator>
 #include <list>
 #include <map>
