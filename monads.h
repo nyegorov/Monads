@@ -45,7 +45,7 @@ template<class F> constexpr auto transform(F f)
 
 template<class F, class S> constexpr auto reduce(F f, S&& s)
 {
-	return ~[f, s = std::forward<S>(s)](auto&& ma) { return std::accumulate(std::begin(ma), std::end(ma), s, f); };
+	return ~[f, s = std::forward<S>(s)](auto&& ma) { return std::reduce(std::begin(ma), std::end(ma), s, f); };
 }
 
 // some standard monads 
@@ -93,7 +93,8 @@ template <class A, class F> constexpr auto mmap(future<A>& fa, F f) -> future<de
 	co_return mapply(co_await fa, f);
 };
 
-template <class A> constexpr auto mjoin(future<future<A>> ffa) -> future<A> { co_return co_await co_await ffa; };
-
+template <class A> constexpr auto mjoin(future<future<A>> ffa) -> future<A> {
+	co_return co_await co_await ffa;
+};
 
 }

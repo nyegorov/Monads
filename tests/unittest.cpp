@@ -2,6 +2,12 @@
 #include "CppUnitTest.h"
 #include "../monads.h"
 
+#ifdef _DEBUG
+const size_t ITER_COUNT = 2'000;
+#else
+const size_t ITER_COUNT = 100'000;
+#endif		
+
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace std;
 using namespace std::experimental;
@@ -199,11 +205,7 @@ namespace tests
 		TEST_METHOD(Performance)
 		{
 			map<string, string> m;
-#ifdef _DEBUG
-			for(int i = 0; i < 2'000; i++) {
-#else
-			for(int i = 0; i < 100'000; i++) {
-#endif
+			for(int i = 0; i < ITER_COUNT; i++) {
 				m = "a=3\nb=xyz\nnoval\n\n"
 					| split_gen('\n')
 					| [](auto&& sv) { return sv 
@@ -217,5 +219,24 @@ namespace tests
 			Assert::AreEqual("xyz"s, m["b"s]);
 		}
 
+	};
+
+	TEST_CLASS(Reference) {
+		TEST_METHOD(Performance) 
+		{
+			map<string, string> m;
+			for(int i = 0; i < ITER_COUNT; i++) {
+				auto l = split("a=3\nb=xyz\nnoval\n\n", '\n');
+				for(auto&& sv : l) {
+					auto kv = split(sv, '=');
+					pair<string_view, string_view> p;
+					if(!kv.empty())	p.first  = kv.front(), kv.pop_front();
+					if(!kv.empty())	p.second = kv.front(), m.insert(p);
+				}
+			}
+			Assert::AreEqual(size_t(2u), m.size());
+			Assert::AreEqual("3"s, m["a"s]);
+			Assert::AreEqual("xyz"s, m["b"s]);
+		}
 	};
 }
