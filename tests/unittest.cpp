@@ -173,6 +173,15 @@ namespace tests
 			Assert::AreEqual("hello, world!"s, val);
 		}
 
+		TEST_METHOD(MultipleArguments)
+		{
+			auto gen_divs = [](int n) { for(int i = 2; i < sqrt(n); i++) co_yield make_tuple(n, i); };
+			auto not_divideable = [](int n, int x) { return n % x != 0; };
+			auto is_prime = [=](int n) { return n | gen_divs | not_divideable | reduce([](bool a, bool b) { return a & b; }, true); };
+			Assert::IsTrue( 37 | is_prime);
+			Assert::IsFalse(38 | is_prime);
+		}
+
 		TEST_METHOD(CustomMonad)
 		{
 			using Bank = bank_account<int>;

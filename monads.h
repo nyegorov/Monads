@@ -3,7 +3,9 @@
 namespace monads {
 
 // generic monad interface
-template<class A, class F> constexpr auto mmap(const A& a, F f)	{ return f(a); };
+template<class A, class F> constexpr auto mmap(A&& a, F f)		{ return f(std::forward<A>(a)); };
+template<class ...A, class F> constexpr auto mmap(const std::tuple<A...>& t, F f) { return std::apply(f, t); };
+template<class ...A, class F> constexpr auto mmap(std::tuple<A...>&& t, F f) { return std::apply(f, std::move(t)); };
 template<class A> constexpr auto mjoin(A&& a)					{ return std::forward<A>(a); };
 template<class MA, class F> constexpr auto mapply(MA&& ma, F f)	{ return mjoin(mmap(ma, f)); }
 
