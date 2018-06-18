@@ -175,11 +175,13 @@ namespace tests
 
 		TEST_METHOD(MultipleArguments)
 		{
-			auto gen_divs = [](int n) { for(int i = 2; i < sqrt(n); i++) co_yield make_tuple(n, i); };
-			auto not_divideable = [](int n, int x) { return n % x != 0; };
-			auto is_prime = [=](int n) { return n | gen_divs | not_divideable | reduce([](bool a, bool b) { return a & b; }, true); };
-			Assert::IsTrue( 37 | is_prime);
-			Assert::IsFalse(38 | is_prime);
+			auto is_prime = [](int n) { 
+				auto gen_divs		= [](int n) { for(int i = 2; i < sqrt(n); i++) co_yield tuple(n, i); };
+				auto is_divideable	= [](int n, int x) { return n % x == 0; };
+				return n | gen_divs | is_divideable | logical_not() | reduce(logical_and(), true);
+			};
+			Assert::IsTrue( is_prime(37));
+			Assert::IsFalse(is_prime(38));
 		}
 
 		TEST_METHOD(CustomMonad)
